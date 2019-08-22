@@ -1,0 +1,120 @@
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.Security;
+import java.util.Arrays;
+
+public class CipherJava {
+    public static BouncyCastleProvider bc = new BouncyCastleProvider();
+    private static SecretKey myDesKey;
+    private static Cipher c;
+
+    static {
+        Security.addProvider(bc);
+    }
+
+    public KeyGenerator keygenerator;
+
+    public static void setKey(String myKey, String typevar) throws NoSuchAlgorithmException {
+        MessageDigest sha = null;
+        try {
+            byte[] key = myKey.getBytes(StandardCharsets.UTF_8);
+            //Un resumen de mensaje criptográficamente seguro toma una entrada de tamaño arbitrario (una matriz de bytes)
+            // y genera una salida de tamaño fijo, llamada resumen o hash.
+            sha = MessageDigest.getInstance("SHA-1");
+            key = sha.digest(key);
+            switch (typevar) {
+                case "AES":
+                    key = Arrays.copyOf(key, 16);
+                    myDesKey = new SecretKeySpec(key, "AES"); //16
+                    break;
+                case "Blowfish":
+                    key = Arrays.copyOf(key, 16);
+                    myDesKey = new SecretKeySpec(key, "Blowfish"); //16
+                    break;
+                case "GOST28147":
+                    key = Arrays.copyOf(key, 32);
+                    myDesKey = new SecretKeySpec(key, "GOST28147"); //32
+                    break;
+                case "XTEA":
+                    key = Arrays.copyOf(key, 16);
+                    myDesKey = new SecretKeySpec(key, "XTEA"); //16
+                    break;
+                default:
+                    System.out.println("Error de llave");
+                    break;
+            }
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static byte[] doDecryption(byte[] s, String typevar) throws Exception {
+        setKey("12345645445", typevar);
+        if (typevar.equals("AES")) {
+            c = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            // Initialize the same cipher for decryption
+            c.init(Cipher.DECRYPT_MODE, myDesKey);
+            // Decrypt the text
+            return (c.doFinal(s));
+        }
+        if (typevar.equals("Blowfish")) {
+            c = Cipher.getInstance("Blowfish");
+            c.init(Cipher.DECRYPT_MODE, myDesKey);
+            return (c.doFinal(s));
+        }
+        if (typevar.equals("GOST28147")) {
+            c = Cipher.getInstance("GOST28147/ECB/NoPadding", "BC");
+            c.init(Cipher.DECRYPT_MODE, myDesKey);
+            return c.doFinal(s);
+        }
+        if (typevar.equals("XTEA")) {
+            c = Cipher.getInstance("XTEA/ECB/PKCS5Padding", "BC");
+            c.init(Cipher.DECRYPT_MODE, myDesKey);
+            return c.doFinal(s);
+        }
+        return null;
+    }
+
+    public byte[] doEncryption(byte[] text, String typevar) throws Exception {
+        setKey("12345645445", typevar);
+        if (typevar.equals("AES")) {
+            c = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            // Initialize the cipher for encryption
+            c.init(Cipher.ENCRYPT_MODE, myDesKey);
+            // Encrypt the text
+            return (c.doFinal(text));
+        }
+        if (typevar.equals("Blowfish")) {
+            c = Cipher.getInstance("Blowfish");
+            c.init(Cipher.ENCRYPT_MODE, myDesKey);
+            return c.doFinal(text);
+        }
+        if (typevar.equals("GOST28147")) {
+            CipherOutputStream cOut;
+            c = Cipher.getInstance("GOST28147/ECB/NoPadding", "BC");
+            ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+            c.init(Cipher.ENCRYPT_MODE, myDesKey);
+            cOut = new CipherOutputStream(bOut,c);
+             for (int i = 0; i != text.length / 2; i++){
+                cOut.write(text[i]);
+            }
+            cOut.write(text, text.length / 2, text.length - text.length / 2);
+            cOut.close();
+            byte[] bytes;
+            bytes = bOut.toByteArray();
+            return bytes;
+        }
+        if (typevar.equals("XTEA")) {
+            c = Cipher.getInstance("XTEA/ECB/PKCS5Padding", "BC");
+            c.init(Cipher.ENCRYPT_MODE, myDesKey);
+            return c.doFinal(text);
+        }
+        return null;
+    }
+}
